@@ -60,6 +60,9 @@ public:
     bool insert(const pair<K,T>& p){
         return insert(p.first,p.second);
     }
+    void erase(const K& key){
+
+    }
 
 
 
@@ -166,6 +169,7 @@ private:
         }
         root->color = RBtreeNode<K,T>::BLACK;
     }
+    void deleteFixup(RBtreeNode<K,T>* node);    
     void inorderTraversal(RBtreeNode<K,T>* node){
         if(node== nil){
             return;
