@@ -10,4 +10,6 @@
 
 [红黑树伪代码实现](https://www.cs.auckland.ac.nz/software/AlgAnim/red_black.html)
 
+[red black tree](http://www.stolerman.net/studies/cs521/red_black_trees.pdf)
+
 《算法导论》
