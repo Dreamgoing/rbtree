@@ -39,7 +39,7 @@ class RBtreeNode{
 public:
     ///@brief 枚举量color声明为private
     enum Color{
-        RED,BLACK
+        RED = 0,BLACK = 1
     }color;
     K key;
     T value;

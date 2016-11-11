@@ -35,7 +35,30 @@ public:
         //root = nullptr;
 
     }
-
+    bool empty() const{
+        return _size==0;
+    }
+    pair<K,T> findPair(const K& key)const{
+        RBtreeNode<K,T>* res = treeSearch(key);
+        if(res== nullptr||res==nil){
+            return make_pair(key,nil->value);
+        } else{
+            return make_pair(key,res->value);
+        }
+    };
+    T& find(const K& key)const {
+        RBtreeNode<K,T>* res = treeSearch(key);
+        return res->value;
+    }
+    bool change(const K& key, const T& value){
+        RBtreeNode<K,T>* res = treeSearch(key);
+        if(res== nullptr||res==nil){
+            return false;
+        } else{
+            res->value = value;
+            return true;
+        }
+    }
     size_t size() const {
         return _size;
     }
@@ -60,9 +83,29 @@ public:
     bool insert(const pair<K,T>& p){
         return insert(p.first,p.second);
     }
-    void erase(const K& key){
-
+    bool erase(const K& key){
+        pair<RBtreeNode<K,T>*,bool> pos =  treeDelete(key);
+        return pos.second;
     }
+    ~RBtree(){
+        treeDestory(root);
+        delete nil;
+    }
+    void clear(){
+        ///@brief 释放内存空间
+        treeDestory(root);
+        root = nil;
+        nil->rightSon = nil->leftSon = nil->parent = nil;
+        nil->color = RBtreeNode<K,T>::BLACK;
+    }
+    const T& operator[](const K& key) const{
+        return find(key);
+    }
+    T& operator[](const K& key){
+        return const_cast<T&>(
+                dynamic_cast<const RBtree&>(*this)[key]);
+    }
+
 
 
 
@@ -169,7 +212,141 @@ private:
         }
         root->color = RBtreeNode<K,T>::BLACK;
     }
-    void deleteFixup(RBtreeNode<K,T>* node);    
+    RBtreeNode<K,T>* treeSuccessor(RBtreeNode<K,T>* node){
+        /***@brief 如果右子结点不为nil则，后继结点为右子结点的最小结点
+         *         否则，向上求后继结点
+         * */
+        if(node->rightSon!=nil){
+            return minimum(node->rightSon);
+        }
+        ///@brief 向上求后继结点
+        RBtreeNode<K,T>* y = node->parent;
+        while (y!=nil&&node==y->rightSon){
+            node = y;
+            y = y->parent;
+        }
+        return y;
+    };
+    pair<RBtreeNode<K,T>*,bool> treeDelete(const K& key){
+        ///@brief 删除策略找到应该删除的位置，替换删除点的值和位置点的值
+        RBtreeNode<K,T>* node = treeSearch(key);
+        RBtreeNode<K,T>* z = nullptr;
+        if(node==nil){
+            ///@brief 没有找到
+            cerr<<"Error : can't find the key to be deleted"<<endl;
+            return make_pair(nullptr,false);
+        }
+        _size--;
+        if(node->leftSon==nil||node->rightSon==nil){
+            z = node;
+        }else{
+            ///@brief 如果z有两个结点，则设z为其后继结点
+            z = treeSuccessor(node);
+        }
+        RBtreeNode<K,T>* y = nullptr;
+        if(z->leftSon!=nil){
+            y = z->leftSon;
+        } else{
+            ///@brief
+            y = z->rightSon;
+        }
+        y->parent = z->parent;
+        if(z->parent==nil){
+            ///删除为根
+            root = y;
+        }else if(z==z->parent->leftSon){
+            z->parent->leftSon = y;
+        } else{
+            z->parent->rightSon = y;
+        }
+        if(node!=z){
+            node->key = z->key;
+            node->value = z->value;
+        }
+        if(z->color==RBtreeNode<K,T>::BLACK){
+            deleteFixup(y);
+        }
+        delete z;///删除z
+        nil->parent = nil;
+        return make_pair(y,true);
+    }
+    void deleteFixup(RBtreeNode<K,T>* x){
+        while(x != root && x->color == RBtreeNode<K,T>::BLACK)
+        {
+            RBtreeNode<K,T>* w = NULL;
+            if(x == x->parent->leftSon)//x是左孩子时
+            {
+                w = x->parent->rightSon;
+                if(w->color == RBtreeNode<K,T>::RED)//当x的兄弟是红色的时候，通过旋转将其兄弟转换为黑色
+                {
+                    w->color = RBtreeNode<K,T>::BLACK;
+                    x->parent->color = RBtreeNode<K,T>::RED;
+                    leftRotate(x->parent);
+                }
+                //当x的兄弟是黑色时
+                //当w的两个儿子都是黑色时
+                if(w->leftSon->color == RBtreeNode<K,T>::BLACK && w->rightSon->color == RBtreeNode<K,T>::BLACK)
+                {
+                    w->color = RBtreeNode<K,T>::RED;//w颜色减去黑色
+                    x = w->parent;//x上移
+                }
+                    //当w的左儿子是红色，右儿子是黑色时,把右儿子转换为红色
+                else if(w->rightSon->color == RBtreeNode<K,T>::BLACK && w->leftSon->color == RBtreeNode<K,T>::RED)
+                {
+                    w->leftSon->color = RBtreeNode<K,T>::BLACK;
+                    w->color = RBtreeNode<K,T>::RED;
+                    rightRotate(w);
+                    w = w->parent;
+                }
+                //w的右儿子是红色
+                if(w->rightSon->color == RBtreeNode<K,T>::RED)
+                {
+                    w->color = w->parent->color;
+                    w->parent->color = RBtreeNode<K,T>::BLACK;
+                    w->rightSon->color = RBtreeNode<K,T>::BLACK;
+                    leftRotate(w->parent);
+                    x = root;
+                }
+            }//if(x == x->parent->leftSon)
+            else//x是右孩子时
+            {
+                w = x->parent->leftSon;
+                if(w->color == RBtreeNode<K,T>::RED)//当x的兄弟是红色的时候，通过旋转将其兄弟转换为黑色
+                {
+                    w->color = RBtreeNode<K,T>::BLACK;
+                    x->parent->color = RBtreeNode<K,T>::RED;
+                    rightRotate(x->parent);
+                }
+                //当x的兄弟是黑色时
+                //当w的两个儿子都是黑色时
+                if(w->leftSon->color == RBtreeNode<K,T>::BLACK && w->rightSon->color == RBtreeNode<K,T>::BLACK)
+                {
+                    w->color = RBtreeNode<K,T>::RED;//w颜色减去黑色
+                    x = w->parent;//x上移
+                }
+                    //当w的右儿子是红色，左儿子是黑色时,把左儿子转换为红色
+                else if(w->leftSon->color == RBtreeNode<K,T>::BLACK && w->rightSon->color == RBtreeNode<K,T>::RED)
+                {
+                    w->rightSon->color = RBtreeNode<K,T>::BLACK;
+                    w->color = RBtreeNode<K,T>::RED;
+                    leftRotate(w);
+                    w = w->parent;
+                }
+                //w的左儿子是红色
+                if(w->leftSon->color == RBtreeNode<K,T>::RED)
+                {
+                    w->color = w->parent->color;
+                    w->parent->color = RBtreeNode<K,T>::BLACK;
+                    w->leftSon->color = RBtreeNode<K,T>::BLACK;
+                    rightRotate(w->parent);
+                    x = root;
+                }
+            }//else
+        }//while
+        x->color = RBtreeNode<K,T>::BLACK;
+        nil->color = RBtreeNode<K,T>::BLACK;//一开始x为nill时，会在第一次上移前把nill颜色设置为红色
+    }
+    
     void inorderTraversal(RBtreeNode<K,T>* node){
         if(node== nil){
             return;
@@ -230,24 +407,22 @@ private:
         nil->parent = nil;
 
     }
-    RBtreeNode<K,T>* minimum(){
-        RBtreeNode<K,T>* tmp = root;
-        while (tmp->leftSon!= nullptr){
+    RBtreeNode<K,T>* minimum(RBtreeNode<K,T>* node){
+        RBtreeNode<K,T>* tmp = node;
+        while (tmp->leftSon!= nil){
             tmp = tmp->leftSon;
         }
         return tmp;
     }
     //template <class K,class T>
-    RBtreeNode<K,T>* maximum(){
-        RBtreeNode<K,T>* tmp = root;
-        while (tmp->rightSon!= nullptr){
+    RBtreeNode<K,T>* maximum(RBtreeNode<K,T>* node){
+        RBtreeNode<K,T>* tmp = node;
+        while (tmp->rightSon!= nil){
             tmp = tmp->rightSon;
         }
         return tmp;
     }
-    void deleteFixup(RBtreeNode<K,T>* x){
 
-    }
     RBtreeNode<K,T>* treeSearch(const K& dkey) const {
         RBtreeNode<K,T>* tmp = root;
         while (tmp!=nil&&dkey!=tmp->key){
@@ -261,6 +436,15 @@ private:
         }
         return tmp;
     };
+    void treeDestory(RBtreeNode<K,T>* node){
+        if(node==nil||node== nullptr){
+            return;
+        }
+        treeDestory(node->leftSon);
+        treeDestory(node->rightSon);
+        delete node;
+
+    }
 
 };
 
